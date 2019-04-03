@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     serv_addr.sin_family = AF_INET; 
     serv_addr.sin_port = htons( PORT ); 
        
-    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr); // Modificar o endereço IP para rodar em máquinas diferentes
     connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
     while (valor_final != 0) {

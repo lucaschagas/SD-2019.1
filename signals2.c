@@ -11,21 +11,21 @@ void signal_handler(int signo) {
 		printf("Recebido sinal de teste 2\n");
 	}
 	if (signo == SIGRTMIN+2) {
-		printf("Recebido sinal de kill\n");
-		kill(getpid(), SIGKILL);
+		printf("Recebido sinal para terminar execução\n");
+		kill(getpid(), SIGTERM);
 	}
 }
 
 int main(int argc, char *argv[]) {
 
 	if (argc != 2) {
-		printf("Formato: ./receive_signal blocking_format(1 = busy; 2 = blocking) \n");
+		printf("Formato: ./receive_signal wait_format(1 = busy; 2 = blocking) \n");
 		return 0;
 	} 
   
-	signal(SIGRTMIN, signal_handler);
-	signal(SIGRTMIN+1, signal_handler);
-	signal(SIGRTMIN+2, signal_handler);
+	signal(SIGRTMIN, signal_handler); // Sinal 34
+	signal(SIGRTMIN+1, signal_handler); // Sinal 35
+	signal(SIGRTMIN+2, signal_handler); // Sinal 36
 
 	printf("Número do processo: %d\n", getpid());
 

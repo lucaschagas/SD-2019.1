@@ -8,6 +8,11 @@
 
 #define SIZE 21
 
+int random_value(void) {
+	srand(time(NULL));
+	return (rand() % 99) + 1;
+}
+
 void is_prime(int n) {
 
     int i, flag = 0;
@@ -36,7 +41,7 @@ void is_prime(int n) {
 int main(int argc, char *argv[]) {
 
 	if (argc != 2) {
-		printf("Formato: ./pipes number_of_values \n");
+		printf("Formato: ./pipes quantidade_de_valores \n");
 		return 0;
 	}
 
@@ -51,12 +56,10 @@ int main(int argc, char *argv[]) {
     	int valor = 1;
     	int contador = 0;
     	close(pipe1[0]);
-    	srand(time(NULL));
 
     	while (contador < atoi(argv[1])) {
-    		int valor_aleatorio = (rand() % 99) + 1;
+    		int valor_aleatorio = random_value();
     		valor += valor_aleatorio;
-
     		sprintf(valor_enviado, "%d", valor);
     		write(pipe1[1], valor_enviado, SIZE);
 

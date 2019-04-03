@@ -9,11 +9,16 @@
 #define PORT 8080 
 #define SIZE 21
 
+int random_value(void) {
+    srand(time(NULL));
+    return (rand() % 99) + 1;
+}
+
 int main(int argc, char *argv[]) 
 { 
 
     if (argc != 2) {
-        printf("Formato: ./socket1 number_of_values \n");
+        printf("Formato: ./socket1 quantidade_de_valores \n");
         return 0;
     }
 
@@ -21,7 +26,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in address; 
     int opt = 1; 
     int addrlen = sizeof(address);
-    srand(time(NULL));
 
     char valor_enviado[SIZE];
     int valor = 1;
@@ -42,7 +46,7 @@ int main(int argc, char *argv[])
     new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
     while (contador < atoi(argv[1])) {
-        int valor_aleatorio = (rand() % 99) + 1;
+        int valor_aleatorio = random_value();
         valor += valor_aleatorio;
 
         sprintf(valor_enviado, "%d", valor);

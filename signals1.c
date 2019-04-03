@@ -5,7 +5,7 @@
 int main(int argc, char *argv[]) {
   
 	if (argc != 3) {
-		printf("Formato: send_signal pid signal\n");
+		printf("Formato: ./send_signal pid sinal \n");
 		return 0;
 	} 
 
@@ -17,9 +17,16 @@ int main(int argc, char *argv[]) {
 	}
 
 	else {
+
+		if(atoi(argv[2]) == 0){
+			printf("O sinal deve ser enviado através de seu código numérico\n");
+			return 1;
+		}
+
 		int success = kill(atoi(argv[1]), atoi(argv[2]));
+
 		if(success == 0){
-			printf("Sinal enviado com sucesso\n");
+			printf("Sinal %s enviado com sucesso\n", argv[2]);
 		}
 	}
 

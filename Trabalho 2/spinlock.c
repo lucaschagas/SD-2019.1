@@ -2,12 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h> 
 #include <time.h> 
+#include <stdint.h>
 
-volatile int lock = 0;
-volatile int acumulador = 0;
-volatile int indice_temp = 0;
-volatile int parcelas = 0;
-volatile int resto = 0;
+// gcc spinlock.c -pthread -o spinlock
+
+int lock = 0;
+int acumulador = 0;
+int indice_temp = 0;
+int parcelas = 0;
+int resto = 0;
 
 void acquire();
 
@@ -18,7 +21,7 @@ int random_value(){
 	return valor;
 }
 
-void *func1(int *vetor) {
+void *func1(int8_t *vetor){
 	acquire();
 	int i = indice_temp;
 	indice_temp += 1;
@@ -37,7 +40,7 @@ void *func1(int *vetor) {
     pthread_exit(0);
 }
 
-void *func2(int *vetor) {
+void *func2(int8_t *vetor){
 	acquire();
 	int i = indice_temp;
 	indice_temp += 1;
@@ -56,37 +59,33 @@ void *func2(int *vetor) {
     pthread_exit(0);
 }
 
-void acquire() {
+void acquire(){
     while (__sync_lock_test_and_set(&lock, 1)) {}
 }
 
-void release() {
-    __sync_synchronize();
+void release(){
     lock = 0;
 }
 
 int main(int argc, char *argv[]){
 
-	if(argc != 3 || atol(argv[1])<=0 || atoi(argv[2])<=0) {
+	if(argc != 3 || atoi(argv[1])<=0 || atoi(argv[2])<=0) {
 		printf("Formato: ./spinlock vector_size number_of_threads \n");
 		return 0;
 	}
 
-	long temp = atol(argv[1]);
-	printf("%ld\n", temp);
+	int8_t* vector = calloc(atoi(argv[1]), 1);
 
-	int vector[temp];
+	// int temp_soma = 0;
 
-	int temp_soma = 0;
-
-	parcelas = atol(argv[1])/atoi(argv[2]);
-	resto = atol(argv[1])%atoi(argv[2]);
+	parcelas = atoi(argv[1])/atoi(argv[2]);
+	resto = atoi(argv[1])%atoi(argv[2]);
 
 	srand(time(NULL));
 
 	for(int i=0; i<atol(argv[1]); i++) {
 		vector[i] = random_value();
-		temp_soma += vector[i];
+		// temp_soma += vector[i];
 	}
 
     pthread_t * thread = malloc(sizeof(pthread_t)*atoi(argv[2]));
@@ -104,7 +103,7 @@ int main(int argc, char *argv[]){
     	pthread_join(thread[i], NULL);
     }
 
-    printf("Valor correto da soma: %d\n", temp_soma);
+    // printf("Valor correto da soma: %d\n", temp_soma);
     printf("Valor total do acumulador: %d\n", acumulador);
 	return(0);
 }

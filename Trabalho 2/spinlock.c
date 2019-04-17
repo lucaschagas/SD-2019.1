@@ -35,9 +35,9 @@ void *func1(int8_t *vetor){
 
 	acquire();
 	acumulador += soma_parcial;
-    release();
+	release();
 
-    pthread_exit(0);
+	pthread_exit(0);
 }
 
 void *func2(int8_t *vetor){
@@ -54,9 +54,9 @@ void *func2(int8_t *vetor){
 
 	acquire();
 	acumulador += soma_parcial;
-    release();
+	release();
 
-    pthread_exit(0);
+	pthread_exit(0);
 }
 
 void acquire(){
@@ -88,22 +88,22 @@ int main(int argc, char *argv[]){
 		// temp_soma += vector[i];
 	}
 
-    pthread_t * thread = malloc(sizeof(pthread_t)*atoi(argv[2]));
+	pthread_t * thread = malloc(sizeof(pthread_t)*atoi(argv[2]));
     
-    for(int i=0; i<atoi(argv[2]); i++) {
-    	if(i != atoi(argv[2]) - 1) {
-    		pthread_create(&thread[i], NULL, (void *(*)(void *)) func1, vector);
+	for(int i=0; i<atoi(argv[2]); i++) {
+		if(i != atoi(argv[2]) - 1) {
+			pthread_create(&thread[i], NULL, (void *(*)(void *)) func1, vector);
 		}
 		else {
 			pthread_create(&thread[i], NULL, (void *(*)(void *)) func2, vector);
 		}   
     }
 
-    for(int i=0; i<atoi(argv[2]); i++) {
-    	pthread_join(thread[i], NULL);
-    }
+	for(int i=0; i<atoi(argv[2]); i++) {
+		pthread_join(thread[i], NULL);
+	}
 
-    // printf("Valor correto da soma: %d\n", temp_soma);
-    printf("Valor total do acumulador: %d\n", acumulador);
+	// printf("Valor correto da soma: %d\n", temp_soma);
+	printf("Valor total do acumulador: %d\n", acumulador);
 	return(0);
 }

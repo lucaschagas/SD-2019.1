@@ -76,8 +76,6 @@ int main(int argc, char *argv[]){
 
 	int8_t* vector = calloc(atoi(argv[1]), 1);
 
-	// int temp_soma = 0;
-
 	parcelas = atoi(argv[1])/atoi(argv[2]);
 	resto = atoi(argv[1])%atoi(argv[2]);
 
@@ -85,11 +83,14 @@ int main(int argc, char *argv[]){
 
 	for(int i=0; i<atol(argv[1]); i++) {
 		vector[i] = random_value();
-		// temp_soma += vector[i];
 	}
 
 	pthread_t * thread = malloc(sizeof(pthread_t)*atoi(argv[2]));
     
+	struct timespec start, finish;
+	double elapsed;
+	clock_gettime(CLOCK_MONOTONIC, &start);
+
 	for(int i=0; i<atoi(argv[2]); i++) {
 		if(i != atoi(argv[2]) - 1) {
 			pthread_create(&thread[i], NULL, (void *(*)(void *)) func1, vector);
@@ -103,7 +104,11 @@ int main(int argc, char *argv[]){
 		pthread_join(thread[i], NULL);
 	}
 
-	// printf("Valor correto da soma: %d\n", temp_soma);
+	clock_gettime(CLOCK_MONOTONIC, &finish);
+	elapsed = (finish.tv_sec - start.tv_sec);
+	elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+
 	printf("Valor total do acumulador: %d\n", acumulador);
+	printf("Tempo total para execução da soma: %f\n", elapsed);
 	return(0);
 }

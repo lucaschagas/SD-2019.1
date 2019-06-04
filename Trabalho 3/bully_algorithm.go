@@ -12,9 +12,8 @@ import (
 )
 
 const (
-	address_all = "239.0.0.0:9999"
-	address_direct = "239.0.0.1:9999"
-	maxDatagramSize = 8192
+	address = "239.0.0.0:9999"
+	maxDatagramSize = 256
 )
 
 var comando_buffer bytes.Buffer
@@ -24,6 +23,7 @@ var mensagens_enviadas[5] int
 var mensagens_recebidas[5] int
 
 var lider_atual int
+var lider_status int
 var process_id int32
 var process_rank int32
 var process_state int
@@ -36,13 +36,8 @@ func msgHandler(src *net.UDPAddr, n int, b []byte) {
 	comando_buffer.WriteString(s)
 }
 
-func send_message_all(message string) {
-	conn := NewBroadcaster(address_all)
-	conn.Write([]byte(message))
-}
-
-func send_message_direct(message string) {
-	conn := NewBroadcaster(address_direct)
+func send_message(message string) {
+	conn := NewBroadcaster(address)
 	conn.Write([]byte(message))
 }
 
@@ -70,7 +65,8 @@ func main() {
 
 	process_id = rand.Int31()
 	process_rank = process_id
-	process_state = 0 //0: Funcionando; 1: Falha
+	process_state = 1 //0: Falha; 1: Funcionando
+	lider_status = 1 //0: Morto; 1: Vivo
 
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -88,81 +84,128 @@ func main() {
 		  		case "help":
 			  		fmt.Println("Comandos disponíveis:")
 			  		fmt.Println("election - Verifica se o líder atual está operacional; caso não esteja, inicia uma eleição.")
-			  		fmt.Println("fail - Emula uma falha de processo, de modo que mensagens recebidas serão ignoradas; o líder atual ainda será atualizado.")
+			  		fmt.Println("fail - Emula uma falha de processo, de modo que mensagens recebidas serão ignoradas. Use o comando \"recover\" para retomar o processo ao funcionamento normal; o líder atual ainda será atualizado.")
 			  		fmt.Println("recover - Recupera um processo que esteja emulando falha.")
 			  		fmt.Println("stats - Imprime o atual líder do sistema, e a quantidade de mensagens enviadas e recebidas de cada tipo.")
+			  		fmt.Println("alive - Verifica se o líder atual está vivo.")
 
 			  	case "election":
-			  		election_status_start = 0 //0: Não recebeu OK; 1: Recebeu OK
-			  		send_message_all("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
-			  		time.Sleep(time.Duration(5) * time.Second)
 
-			  		if election_status_start == 0 {
-				  		send_message_all("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
-				  		fmt.Println("Comando executado com sucesso.")
-				  	} else {
-				  		fmt.Println("Existe processo ativo com rank maior·")
-				  	}
+			  		if process_state == 0 {
+			  			fmt.Println("Processo está simulando uma falha, e não pode enviar mensagens.")
+			  		}
+
+			  		if process_state == 1 {
+
+				  		election_status_start = 0 //0: Não recebeu OK; 1: Recebeu OK
+				  		send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				  		time.Sleep(time.Duration(3) * time.Second)
+
+				  		if election_status_start == 0 {
+					  		send_message("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+					  		fmt.Println("Comando executado com sucesso.")
+					  	} else {
+					  		fmt.Println("Existe processo ativo com rank maior·")
+					  	}
+					}
 
 			  	case "fail":
-			  		process_state = 1
-			  		fmt.Println("Comando executado com sucesso.")
+
+			  		if process_state == 0 {
+			  			fmt.Println("O processo já está simulando uma falha.")
+			  		}
+
+			  		if process_state == 1 {
+			  			process_state = 0
+			  			fmt.Println("O processo agora está simulando uma falha.")
+			  		}
 
 			  	case "recover":
-			  		process_state = 0
-			  		fmt.Println("Comando executado com sucesso.")
+
+			  		if process_state == 0 {
+			  			fmt.Println("O processo já está funcionando normalmente.")
+			  		}
+
+			  		if process_state == 0 {
+			  			process_state = 1
+			  			fmt.Println("O processo está agora funcionando normalmente.")
+			  		}
 
 			  	case "stats":
 			  		fmt.Printf("Mensagens enviadas- ELEICAO: %d | OK: %d | LIDER: %d | VIVO: %d | VIVO_OK: %d\n", mensagens_enviadas[0], mensagens_enviadas[1], mensagens_enviadas[2], mensagens_enviadas[3], mensagens_enviadas[4])
 			  		fmt.Printf("Mensagens recebidas- ELEICAO: %d | OK: %d | LIDER: %d | VIVO: %d | VIVO_OK: %d\n", mensagens_recebidas[0], mensagens_recebidas[1], mensagens_recebidas[2], mensagens_recebidas[3], mensagens_recebidas[4])
 			  		fmt.Println("Comando executado com sucesso.")
+
+			  	case "alive":
+
+			  		if process_state == 0 {
+			  			fmt.Println("Processo está simulando uma falha, e não pode enviar mensagens.")
+			  		}
+
+			  		if process_state == 1 {
+
+				  		send_message("3" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+
+				  		time.Sleep(time.Duration(3) * time.Second)
+				  		if lider_status == 1 {
+				  			fmt.Println("Líder está vivo.")
+				  		} else {
+				  			time.Sleep(time.Duration(7) * time.Second)
+				  			if lider_status == 1 {
+				  				fmt.Println("Líder está vivo.")
+				  			} else {
+				  				fmt.Println("Líder está morto.")
+				  				lider_status = 0
+				  			}
+				  		}
+				  	}
 		  	}
 	  	}
 	}()
 
+	// Leitura de mensagens na rede
+	go Listen(address, msgHandler)
+
 	// Processamento de mensagens
 	go func() {
 
-		go Listen(address_all, msgHandler)
-
 		for true {
-			comando_atual, erro_buffer := comando_buffer.ReadString(';')
+			comando_atual_bytes, _ := comando_buffer.ReadBytes(';')
+			comando_atual_string := string(bytes.Trim(comando_atual_bytes, "\x00"))
 
-			var erro_atual string = ""
+			if comando_atual_string != "" {
 
-			if erro_buffer != nil {
-				if erro_buffer.Error() == "EOF" {
-					erro_atual = erro_buffer.Error()
-				}
-			}
-
-			if comando_atual != "" && erro_atual != "EOF" {
-				erro_atual = ""
-
-				string_split := strings.Split(comando_atual, "|")
+				string_split := strings.Split(comando_atual_string, "|")
 				time.Sleep(time.Duration(1) * time.Second)
 				codigo, _, valor := string_split[0], string_split[1], string_split[2]
 
 				valor_temp := strings.TrimSuffix(valor, ";")
 				valor_int, _ := strconv.Atoi(valor_temp)
-				codigo_temp, _ := strconv.Atoi(codigo)
+				codigo_int, err := strconv.Atoi(codigo)
 
-				fmt.Println(codigo, valor, lider_atual, codigo_temp)
+				if err != nil {
+					fmt.Println(err.Error())
+				}
 
-				switch codigo_temp {
+				fmt.Println("Código:", codigo, "| Valor:", valor_int)
+
+				switch codigo_int {
 					case 0:
 						fmt.Println("Código ELEIÇÃO")
-						if process_rank > int32(valor_int) {
 
-							send_message_all("1" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
-							time.Sleep(time.Duration(1) * time.Second)
+						if process_state == 1 {
 
-							election_status_receive = 0
-							send_message_all("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
-							time.Sleep(time.Duration(3) * time.Second)
-							
-							if election_status_receive == 0 {
-								send_message_all("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+							if process_rank > int32(valor_int) {
+
+								send_message("1" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+
+								election_status_receive = 0
+								send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+								time.Sleep(time.Duration(3) * time.Second)
+								
+								if election_status_receive == 0 {
+									send_message("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+								}
 							}
 						}
 
@@ -172,22 +215,36 @@ func main() {
 						election_status_receive = 1
 
 					case 2:
-						lider_atual = valor_int
+						fmt.Println("Código LÍDER")
+						if lider_atual < valor_int && lider_status == 1{
+							lider_atual = valor_int
+						} else if lider_status == 0 {
+							lider_atual = valor_int
+						}
 
 					case 3:
-						if process_rank == int32(lider_atual) {
-							send_message_direct("4" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+						fmt.Println("Código VIVO")
+
+						if process_state == 1 {
+							if process_rank == int32(lider_atual) {
+								send_message("4" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+							}
 						}
 
 					case 4:
+						fmt.Println("Código VIVO_OK")
 						new_election_status = 1
+						lider_status = 1
 
+					/*
 					default:
 						fmt.Println("DEFAULT")
-						fmt.Println(codigo)
+						fmt.Println("Código:", codigo, "| Valor:", valor_int)
+						goto myswitch
+					*/
 				}
 			} else {
-				time.Sleep(time.Duration(1) * time.Second)
+				time.Sleep(time.Duration(10) * time.Millisecond)
 			}
 		}
 	}()
@@ -211,7 +268,7 @@ func main() {
 		  			send_message_all("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
 		  		}
 	  		}*/
-	  		fmt.Println(lider_atual)
+	  		fmt.Println("Líder atual:", lider_atual)
 	  	}
 	}()
 

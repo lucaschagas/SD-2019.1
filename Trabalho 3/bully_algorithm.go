@@ -29,7 +29,6 @@ var process_rank int32
 var process_state int
 var election_status_start int
 var election_status_receive int
-var new_election_status int
 
 func msgHandler(src *net.UDPAddr, n int, b []byte) {
 	s := string(b)
@@ -65,11 +64,13 @@ func main() {
 
 	process_id = rand.Int31()
 	process_rank = process_id
+
+	// Implementar semáforo para estados do líder e do processo
 	process_state = 1 //0: Falha; 1: Funcionando
 	lider_status = 1 //0: Morto; 1: Vivo
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(1)
 
 	// Interface com o usuário
 	go func() {
@@ -87,7 +88,7 @@ func main() {
 			  		fmt.Println("fail - Emula uma falha de processo, de modo que mensagens recebidas serão ignoradas. Use o comando \"recover\" para retomar o processo ao funcionamento normal; o líder atual ainda será atualizado.")
 			  		fmt.Println("recover - Recupera um processo que esteja emulando falha.")
 			  		fmt.Println("stats - Imprime o atual líder do sistema, e a quantidade de mensagens enviadas e recebidas de cada tipo.")
-			  		fmt.Println("alive - Verifica se o líder atual está vivo.")
+			  		fmt.Println("alive - Verifica se o líder atual está vivo; caso não esteja, avisa todos os processos que o líder está morto.")
 
 			  	case "election":
 
@@ -122,7 +123,7 @@ func main() {
 
 			  	case "recover":
 
-			  		if process_state == 0 {
+			  		if process_state == 1 {
 			  			fmt.Println("O processo já está funcionando normalmente.")
 			  		}
 
@@ -145,17 +146,18 @@ func main() {
 			  		if process_state == 1 {
 
 				  		send_message("3" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				  		lider_status = 0
 
 				  		time.Sleep(time.Duration(3) * time.Second)
 				  		if lider_status == 1 {
 				  			fmt.Println("Líder está vivo.")
 				  		} else {
-				  			time.Sleep(time.Duration(7) * time.Second)
+				  			time.Sleep(time.Duration(3) * time.Second)
 				  			if lider_status == 1 {
 				  				fmt.Println("Líder está vivo.")
 				  			} else {
 				  				fmt.Println("Líder está morto.")
-				  				lider_status = 0
+				  				send_message("5" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
 				  			}
 				  		}
 				  	}
@@ -216,10 +218,13 @@ func main() {
 
 					case 2:
 						fmt.Println("Código LÍDER")
-						if lider_atual < valor_int && lider_status == 1{
+						if lider_atual < valor_int && lider_status == 1 {
 							lider_atual = valor_int
-						} else if lider_status == 0 {
+						}
+
+						if lider_status == 0 {
 							lider_atual = valor_int
+							lider_status = 1
 						}
 
 					case 3:
@@ -233,15 +238,11 @@ func main() {
 
 					case 4:
 						fmt.Println("Código VIVO_OK")
-						new_election_status = 1
 						lider_status = 1
 
-					/*
-					default:
-						fmt.Println("DEFAULT")
-						fmt.Println("Código:", codigo, "| Valor:", valor_int)
-						goto myswitch
-					*/
+					case 5:
+						fmt.Println("Código DEAD_LÍDER")
+						lider_status = 0
 				}
 			} else {
 				time.Sleep(time.Duration(10) * time.Millisecond)
@@ -252,26 +253,29 @@ func main() {
 	// Detecção do líder
 	go func() {
 
-		//go Listen(address_direct, msgHandler)
-
 		for true {
+			time.Sleep(time.Duration(20) * time.Second)
 
-			new_election_status = 0
-			time.Sleep(time.Duration(5) * time.Second)
-/*
-			if process_rank != int32(lider_atual) {
+			send_message("3" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+			lider_status = 0
 
-				send_message_all("3" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
-		  		time.Sleep(time.Duration(3) * time.Second)
+			time.Sleep(time.Duration(7) * time.Second)
 
-		  		if new_election_status == 0 {
-		  			send_message_all("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
-		  		}
-	  		}*/
+			if lider_status == 0 {
+				send_message("5" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				
+				election_status_receive = 0
+				send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				time.Sleep(time.Duration(3) * time.Second)
+								
+				if election_status_receive == 0 {
+					send_message("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				}				
+			}
+
 	  		fmt.Println("Líder atual:", lider_atual)
 	  	}
 	}()
 
 	wg.Wait()
-
 }

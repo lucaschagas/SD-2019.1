@@ -19,8 +19,8 @@ const (
 var comando_buffer bytes.Buffer
 var comando_atual string
 
-var mensagens_enviadas[5] int 
-var mensagens_recebidas[5] int
+var mensagens_enviadas[6] int 
+var mensagens_recebidas[6] int
 
 var lider_atual int
 var lider_status int
@@ -100,10 +100,12 @@ func main() {
 
 				  		election_status_start = 0 //0: Não recebeu OK; 1: Recebeu OK
 				  		send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				  		mensagens_enviadas[0] += 1
 				  		time.Sleep(time.Duration(3) * time.Second)
 
 				  		if election_status_start == 0 {
 					  		send_message("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+					  		mensagens_enviadas[2] += 1
 					  		fmt.Println("Comando executado com sucesso.")
 					  	} else {
 					  		fmt.Println("Existe processo ativo com rank maior·")
@@ -133,8 +135,8 @@ func main() {
 			  		}
 
 			  	case "stats":
-			  		fmt.Printf("Mensagens enviadas- ELEICAO: %d | OK: %d | LIDER: %d | VIVO: %d | VIVO_OK: %d\n", mensagens_enviadas[0], mensagens_enviadas[1], mensagens_enviadas[2], mensagens_enviadas[3], mensagens_enviadas[4])
-			  		fmt.Printf("Mensagens recebidas- ELEICAO: %d | OK: %d | LIDER: %d | VIVO: %d | VIVO_OK: %d\n", mensagens_recebidas[0], mensagens_recebidas[1], mensagens_recebidas[2], mensagens_recebidas[3], mensagens_recebidas[4])
+			  		fmt.Printf("Mensagens enviadas- ELEICAO: %d | OK: %d | LIDER: %d | VIVO: %d | VIVO_OK: %d | LIDER_MORTO: %d\n", mensagens_enviadas[0], mensagens_enviadas[1], mensagens_enviadas[2], mensagens_enviadas[3], mensagens_enviadas[4], mensagens_enviadas[5])
+			  		fmt.Printf("Mensagens recebidas- ELEICAO: %d | OK: %d | LIDER: %d | VIVO: %d | VIVO_OK: %d | LIDER_MORTO: %d\n", mensagens_recebidas[0], mensagens_recebidas[1], mensagens_recebidas[2], mensagens_recebidas[3], mensagens_recebidas[4], mensagens_recebidas[5])
 			  		fmt.Println("Comando executado com sucesso.")
 
 			  	case "alive":
@@ -146,6 +148,7 @@ func main() {
 			  		if process_state == 1 {
 
 				  		send_message("3" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				  		mensagens_enviadas[3] += 1
 				  		lider_status = 0
 
 				  		time.Sleep(time.Duration(3) * time.Second)
@@ -158,6 +161,7 @@ func main() {
 				  			} else {
 				  				fmt.Println("Líder está morto.")
 				  				send_message("5" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				  				mensagens_enviadas[5] += 1
 				  			}
 				  		}
 				  	}
@@ -194,30 +198,38 @@ func main() {
 				switch codigo_int {
 					case 0:
 						fmt.Println("Código ELEIÇÃO")
+						mensagens_recebidas[0] += 1
 
 						if process_state == 1 {
 
 							if process_rank > int32(valor_int) {
 
 								send_message("1" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+								mensagens_enviadas[1] += 1
 
 								election_status_receive = 0
 								send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+								mensagens_enviadas[0] += 1
 								time.Sleep(time.Duration(3) * time.Second)
 								
 								if election_status_receive == 0 {
 									send_message("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+									mensagens_enviadas[2] += 1
 								}
 							}
 						}
 
 					case 1:
 						fmt.Println("Código OK")
+						mensagens_recebidas[1] += 1
+
 						election_status_start = 1
 						election_status_receive = 1
 
 					case 2:
 						fmt.Println("Código LÍDER")
+						mensagens_recebidas[2] += 1
+
 						if lider_atual < valor_int && lider_status == 1 {
 							lider_atual = valor_int
 						}
@@ -229,19 +241,25 @@ func main() {
 
 					case 3:
 						fmt.Println("Código VIVO")
+						mensagens_recebidas[3] += 1
 
 						if process_state == 1 {
 							if process_rank == int32(lider_atual) {
 								send_message("4" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+								mensagens_enviadas[4] += 1
 							}
 						}
 
 					case 4:
 						fmt.Println("Código VIVO_OK")
+						mensagens_recebidas[4] += 1
+
 						lider_status = 1
 
 					case 5:
 						fmt.Println("Código DEAD_LÍDER")
+						mensagens_recebidas[5] += 1
+						
 						lider_status = 0
 				}
 			} else {
@@ -257,23 +275,25 @@ func main() {
 			time.Sleep(time.Duration(20) * time.Second)
 
 			send_message("3" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+			mensagens_enviadas[3] += 1
 			lider_status = 0
 
 			time.Sleep(time.Duration(7) * time.Second)
 
 			if lider_status == 0 {
 				send_message("5" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				mensagens_enviadas[5] += 1
 				
 				election_status_receive = 0
 				send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+				mensagens_enviadas[0] += 1
 				time.Sleep(time.Duration(3) * time.Second)
 								
 				if election_status_receive == 0 {
 					send_message("2" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";")
+					mensagens_enviadas[2] += 1
 				}				
 			}
-
-	  		fmt.Println("Líder atual:", lider_atual)
 	  	}
 	}()
 

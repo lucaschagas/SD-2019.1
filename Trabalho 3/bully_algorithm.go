@@ -39,6 +39,7 @@ var process_state_lock = &sync.Mutex{}
 var ongoing_election_lock = &sync.Mutex{}
 var ok_lock = &sync.Mutex{}
 
+// Adiciona mensagem ao buffer responsável por armazenar mensagens que ainda serão processadas
 func msgHandler(src *net.UDPAddr, n int, b []byte) {
 	s := string(b)
 	comando_buffer_lock.Lock()
@@ -46,6 +47,7 @@ func msgHandler(src *net.UDPAddr, n int, b []byte) {
 	comando_buffer_lock.Unlock()
 }
 
+// Envia mensagem pelam rede para o endereço address, na porta port
 func send_message(message string, port int) {
 	conn := NewBroadcaster(address + ":" + strconv.Itoa(port))
 	conn.Write([]byte(message))
@@ -57,6 +59,7 @@ func NewBroadcaster(address string) (*net.UDPConn) {
 	return conn
 }
 
+// Escuta por mensagens na rede no endereço address na porta port
 func Listen(address string, handler func(*net.UDPAddr, int, []byte), port int) {
 	addr, _ := net.ResolveUDPAddr("udp", address + ":" + strconv.Itoa(port))
 	conn, _ := net.ListenMulticastUDP("udp", nil, addr)
@@ -70,19 +73,23 @@ func Listen(address string, handler func(*net.UDPAddr, int, []byte), port int) {
 	}
 }
 
+// Inicia eleição, propondo que este processo se torne o novo líder
 func start_election() {
+	// Limita o processo a iniciar somente 1 eleição por vez
 	ongoing_election_lock.Lock()
 	ongoing_election = 1
 	ongoing_election_lock.Unlock()
 
+	//Zera o flag de OK
 	ok_lock.Lock()
 	teste_ok = 0
 	ok_lock.Unlock()
 
 	send_message("0" + "|" + fmt.Sprint(process_id) + "|" + fmt.Sprint(process_rank) + ";", multicastPort)
 	update_sent_messages(0)
-	time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 
+	// Caso o flag de OK ainda seja 0, envia mensagem de "LÍDER" pela rede e encerra a eleição; caso contrário, somente encerra a eleição
 	ok_lock.Lock()
 	if teste_ok == 0 {
 		ok_lock.Unlock()
@@ -97,6 +104,7 @@ func start_election() {
 	ongoing_election_lock.Unlock()
 }
 
+// Checa se o líder está vivo; retorna 0 caso esteja morto e 1 caso esteja vivo
 func check_leader_alive() (answer int) {
 	lider_status_lock.Lock()
 	lider_status = 0
@@ -119,12 +127,14 @@ func check_leader_alive() (answer int) {
 	}
 }
 
+// Atualiza o contador de mensagens recebidas
 func update_received_messages(i int) {
 	mensagens_recebidas_lock.Lock()
 	mensagens_recebidas[i] += 1
 	mensagens_recebidas_lock.Unlock()
 }
 
+// Atualiza o contador de mensagens enviadas
 func update_sent_messages(i int) {
 	mensagens_enviadas_lock.Lock()
 	mensagens_enviadas[i] += 1
@@ -134,6 +144,7 @@ func update_sent_messages(i int) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	// O ID do processo e seu rank possuem o mesmo valor para este projeto
 	process_id = rand.Intn(7998)+1125
 	process_rank = process_id
 
@@ -163,7 +174,7 @@ func main() {
 			  		fmt.Println("fail - Emula uma falha de processo, de modo que mensagens recebidas serão ignoradas. Use o comando \"recover\" para retomar o processo ao funcionamento normal; o líder atual ainda será atualizado.")
 			  		fmt.Println("recover - Recupera um processo que esteja emulando falha.")
 			  		fmt.Println("stats - Imprime o atual líder do sistema, e a quantidade de mensagens enviadas e recebidas de cada tipo.")
-			  		fmt.Println("alive - Verifica se o líder atual está vivo; caso não esteja, avisa todos os processos que o líder está morto.")
+			  		fmt.Println("alive - Verifica se o líder atual está vivo.")
 			  		fmt.Println("clear - Reseta a quantidade de mensagens enviadas e recebidas imprimida pelo comando stats.")
 
 			  	case "election":
@@ -284,6 +295,7 @@ func main() {
 	go func() {
 
 		for true {
+			// Lê conteúdo do buffer e põe em comando_atual_string
 			comando_buffer_lock.Lock()
 			comando_atual_bytes, _ := comando_buffer.ReadBytes(';')
 			comando_buffer_lock.Unlock()
@@ -291,6 +303,7 @@ func main() {
 
 			if comando_atual_string != "" {
 
+				// Caso comando não seja vazio, ou seja, caso o buffer não esteja vazia, coloca o conteúdo da mensagem nas variáveis valor_int, codigo_int e processo_int
 				string_split := strings.Split(comando_atual_string, "|")
 				time.Sleep(30 * time.Millisecond)
 				codigo, processo_string, valor := string_split[0], string_split[1], string_split[2]
@@ -299,12 +312,6 @@ func main() {
 				valor_int, _ := strconv.Atoi(valor_temp)
 				codigo_int, _ := strconv.Atoi(codigo)
 				processo_int, _ := strconv.Atoi(processo_string)
-
-				/*if processo_int == process_id && lider_atual != process_id {
-					process_id = rand.Intn(7998)+1125
-				}*/
-
-				//fmt.Println("Código:", codigo, "| Valor:", valor_int)
 
 				switch codigo_int {
 					case 0:
@@ -376,10 +383,10 @@ func main() {
 		}
 	}()
 
-	// Detecção automática do líder
+	// Detecção periódica do líder
 	go func() {
 		for true {
-			time.Sleep(400 * time.Second)
+			time.Sleep(20 * time.Second)
 
 			if process_state == 1 {
 				auto_check := check_leader_alive()
